@@ -1,0 +1,27 @@
+name: ChangelogAI
+description: Genera notas de version a partir de tus commits y las publica en GitHub Releases
+branding:
+  icon: file-text
+  color: blue
+inputs:
+  github-token:
+    description: Token de GitHub
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Generar y publicar notas
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        PREV=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+        RANGE="${PREV:+$PREV..}HEAD"
+        {
+          echo "## Nuevas funciones"
+          git log $RANGE --pretty="- %s" --grep="^feat" || true
+          echo
+          echo "## Correcciones"
+          git log $RANGE --pretty="- %s" --grep="^fix" || true
+        } > NOTES.md
+        gh release create "$GITHUB_REF_NAME" --notes-file NOTES.md || gh release edit "$GITHUB_REF_NAME" --notes-file NOTES.md
